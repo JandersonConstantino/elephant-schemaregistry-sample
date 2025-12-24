@@ -1,5 +1,6 @@
 using Avro.Generic;
 using Confluent.Kafka;
+using Confluent.SchemaRegistry;
 using Elephant.Kafka.SchemaRegistry.Sample.Workers;
 using Elephant.Kafka.SchemaRegistry.Sample.Workers.Serdes;
 using Take.Elephant.Kafka.SchemaRegistry;
@@ -14,20 +15,17 @@ public abstract class Program
 
         const string topic = "sample-topic";
 
+        var consumerConfig = builder.Configuration.GetSection("Kafka:Consumer").Get<ConsumerConfig>()
+                             ?? throw new InvalidOperationException("Kafka:Consumer is not set.");
+
+        var producerConfig = builder.Configuration.GetSection("Kafka:Producer").Get<ProducerConfig>()
+                             ?? throw new InvalidOperationException("Kafka:Producer is not set.");
+
+        var schemaRegistryConfig = builder.Configuration.GetSection("SchemaRegistry").Get<SchemaRegistryConfig>()
+                                   ?? throw new InvalidOperationException("SchemaRegistry is not set.");
+
         var schemaRegistryOptions =
-            new SchemaRegistryOptions("http://localhost:8081", SchemaRegistrySerializerType.AVRO);
-
-        var consumerConfig = new ConsumerConfig
-        {
-            BootstrapServers = "localhost:9092",
-            GroupId = "elephant-sample",
-            AutoOffsetReset = AutoOffsetReset.Latest
-        };
-
-        var producerConfig = new ProducerConfig
-        {
-            BootstrapServers = "localhost:9092"
-        };
+            new SchemaRegistryOptions(schemaRegistryConfig, SchemaRegistrySerializerType.AVRO);
 
         builder.Services.AddSingleton(
             new KafkaSchemaRegistrySenderQueue<TestItemAvro>(
